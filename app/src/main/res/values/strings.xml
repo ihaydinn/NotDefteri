@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Not Defteri</string>
+    <string name="action_settings">Ayarlar</string>
+    <string name="kategoriler">Kategoriler</string>
+
+
+    <string-array name="kategoriler">
+
+        <item>Genel</item>
+        <item>Okul</item>
+        <item>Aile</item>
+        <item>İş</item>
+
+    </string-array>
+
+
+    <string-array name="notlar">
+        <item>Markete git</item>
+        <item>Okula git</item>
+        <item>İşe git</item>
+    </string-array>
+
+</resources>
