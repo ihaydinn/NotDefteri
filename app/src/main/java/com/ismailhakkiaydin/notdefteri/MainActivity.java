@@ -1,8 +1,13 @@
 package com.ismailhakkiaydin.notdefteri;
 
+import android.app.LoaderManager;
 import android.content.ContentValues;
+import android.content.CursorLoader;
 import android.content.Intent;
+import android.content.Loader;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -15,44 +20,86 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.ismailhakkiaydin.notdefteri.data.DatabaseHelper;
 import com.ismailhakkiaydin.notdefteri.data.NotDefterimContract.KategoriEntry;
 import com.ismailhakkiaydin.notdefteri.data.NotDefterimContract.NotlarEntry;
+import com.ismailhakkiaydin.notdefteri.data.NotDefterimQueryHandler;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
+    private static final int TUM_NOTLAR = -1;
+    private static final int TUM_KATEGORILER = -1;
     Spinner spinner;
     ListView notlarListesi;
+    NotlarCursorAdapter adapter;
+    KategoriCursorAdapter kategoriCursorAdapter;
+    Cursor cursor, kategoriCursor;
+    long secilenKategoriID=0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        notOlustur();
+        //loader initialize edilir ve oncreateloader tetiklenir
 
-        spinner = findViewById(R.id.spinner);
-        notlarListesi = findViewById(R.id.listViewNotlar);
+        getLoaderManager().initLoader(150, null, this);
 
-        String[] notlar = getResources().getStringArray(R.array.notlar);
 
-        ArrayAdapter<String> aa = new ArrayAdapter<String>(MainActivity.this, R.layout.notlar_tek_satir, R.id.tvNot, notlar);
-        notlarListesi.setAdapter(aa);
-        notlarListesi.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+        spinner = (Spinner) findViewById(R.id.spinner);
+        kategoriCursorAdapter=new KategoriCursorAdapter(this, kategoriCursor, false);
+        spinner.setAdapter(kategoriCursorAdapter);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                Intent intent = new Intent(MainActivity.this, NotActivity.class);
-                String tiklanilanNot = (String) notlarListesi.getItemAtPosition(i);
-                intent.putExtra("notIcerik", tiklanilanNot);
-                startActivity(intent);
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                secilenKategoriID=id;
+                getLoaderManager().restartLoader(100, null, MainActivity.this);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
             }
         });
 
-        FloatingActionButton fab = findViewById(R.id.fab);
+        notlarListesi = (ListView) findViewById(R.id.lvNotlar);
+        getLoaderManager().initLoader(100, null, MainActivity.this);
+        adapter = new NotlarCursorAdapter(this, cursor, false);
+        notlarListesi.setAdapter(adapter);
+
+
+
+
+
+        notlarListesi.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                Intent intent = new Intent(MainActivity.this, NotActivity.class);
+
+                Cursor tiklanilanNot = (Cursor) notlarListesi.getItemAtPosition(position);
+
+                intent.putExtra(NotlarEntry._ID, tiklanilanNot.getString(0));
+                intent.putExtra(NotlarEntry.COLUMN_NOT_ICERIK, tiklanilanNot.getString(1));
+                intent.putExtra(NotlarEntry.COLUMN_OLUSTURULMA_TARIHI, tiklanilanNot.getString(2));
+                intent.putExtra(NotlarEntry.COLUMN_BITIS_TARIHI, tiklanilanNot.getString(3));
+                intent.putExtra(NotlarEntry.COLUMN_YAPILDI, tiklanilanNot.getString(4));
+                intent.putExtra(NotlarEntry.COLUMN_KATEGORI_ID, tiklanilanNot.getString(5));
+                intent.putExtra(KategoriEntry.COLUMN_KATEGORI, tiklanilanNot.getString(6));
+
+                startActivity(intent);
+
+
+            }
+        });
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -62,27 +109,43 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
+        int id = item.getItemId();
         if (id == R.id.action_settings) {
             return true;
         }
-        if (id == R.id.kategoriler) {
-            Intent intent = new Intent(this,KategoriActivity.class);
+
+        if (id == R.id.action_kategori) {
+            Intent intent = new Intent(this, KategoriActivity.class);
             startActivity(intent);
+            return true;
+        }
+
+        if (id == R.id.action_tum_kategorileri_sil) {
+            kategorileriSil(TUM_KATEGORILER);
+            return true;
+        }
+
+        if (id == R.id.action_tum_notlari_sil) {
+            notlariSil(TUM_NOTLAR);
+            return true;
+        }
+
+        if (id == R.id.action_test_kategoriler) {
+            testKategorilerOlustur();
+            return true;
+        }
+        if (id == R.id.action_test_notlar) {
+            testNotlarOlustur();
             return true;
         }
 
@@ -90,30 +153,137 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void notOlustur() {
+    private void testKategorilerOlustur() {
 
-        DatabaseHelper helper = new DatabaseHelper(this);
-        SQLiteDatabase db = helper.getWritableDatabase();
+        for (int i = 1; i <= 20; i++) {
 
-        String insertSorgusu = "INSERT INTO notlar ("
-                + NotlarEntry.COLUMN_NOT_ICERIK + ","
-                + NotlarEntry.COLUMN_KATEGORI_ID + ","
-                + NotlarEntry.COLUMN_OLUSTURULMA_TARIHI + ","
-                + NotlarEntry.COLUMN_BITIS_TARIHI + " ,"
-                + NotlarEntry.COLUMN_YAPILDI + ")"
-                + " VALUES (\"SPORA GIT\", 1, \"07-05-2017\", \"\", 0)";
+            ContentValues values = new ContentValues();
+            values.put(KategoriEntry.COLUMN_KATEGORI, "Deneme Kategori #" + i);
+            NotDefterimQueryHandler handler = new NotDefterimQueryHandler(this.getContentResolver());
+            handler.startInsert(1, null, KategoriEntry.CONTENT_URI, values);
+        }
+    }
 
-        db.execSQL(insertSorgusu);
+    private void testNotlarOlustur() {
 
-        ContentValues yeniKayit = new ContentValues();
-        yeniKayit.put(NotlarEntry.COLUMN_NOT_ICERIK, "Okula Uğra");
-        yeniKayit.put(NotlarEntry.COLUMN_KATEGORI_ID, 1);
-        yeniKayit.put(NotlarEntry.COLUMN_OLUSTURULMA_TARIHI, "06-05-2017");
-        yeniKayit.put(NotlarEntry.COLUMN_YAPILDI, 0);
+        for (int i = 1; i <= 50; i++) {
 
-        long id = db.insert(NotlarEntry.TABLE_NAME, null, yeniKayit);
-        db.close();
+            ContentValues yeniKayit = new ContentValues();
+            yeniKayit.put(NotlarEntry.COLUMN_NOT_ICERIK, "YENİ NOT #" + i);
+            yeniKayit.put(NotlarEntry.COLUMN_KATEGORI_ID, (i % 20) + 1);
+            yeniKayit.put(NotlarEntry.COLUMN_OLUSTURULMA_TARIHI, "06-05-2017");
+            yeniKayit.put(NotlarEntry.COLUMN_BITIS_TARIHI, "19-05-2017");
+            yeniKayit.put(NotlarEntry.COLUMN_YAPILDI, (i % 2 == 0) ? 1 : 0);
+
+            NotDefterimQueryHandler handler = new NotDefterimQueryHandler(this.getContentResolver());
+            handler.startInsert(1, null, NotlarEntry.CONTENT_URI, yeniKayit);
+
+        }
 
     }
 
+    private void kategoriGoster() {
+
+        String[] projection = {"_id", "kategori"};
+
+        Cursor cursor = getContentResolver().query(KategoriEntry.CONTENT_URI, projection, null, null, null, null);
+
+        String tumKategoriler = "";
+
+        while (cursor.moveToNext()) {
+
+            String id = cursor.getString(0);
+            String kategori = cursor.getString(1);
+
+            tumKategoriler = tumKategoriler + "id:" + id + " kategori:" + kategori + "\n";
+
+        }
+
+        Toast.makeText(this, tumKategoriler, Toast.LENGTH_LONG).show();
+
+
+
+    }
+
+
+    private void notlariGuncelle() {
+
+        ContentValues values = new ContentValues();
+        values.put(NotlarEntry.COLUMN_NOT_ICERIK, "güncellenen yeni değer");
+
+
+        int id = getContentResolver().update(NotlarEntry.CONTENT_URI, values, "_id=?", new String[]{"8"});
+        Toast.makeText(this, "Kayıt Güncellendi:" + id, Toast.LENGTH_LONG).show();
+
+    }
+
+    private void notlariSil(int silinecekID) {
+
+        String selection = "_id=?";
+        String[] args = {String.valueOf(silinecekID)};
+        if (silinecekID == TUM_NOTLAR) {
+            selection = null;
+            args = null;
+        }
+
+        NotDefterimQueryHandler handler = new NotDefterimQueryHandler(this.getContentResolver());
+        handler.startDelete(1, null, NotlarEntry.CONTENT_URI, selection, args);
+    }
+
+    private void kategorileriSil(int silinecekID) {
+
+        String selection = "_id=?";
+        String[] args = {String.valueOf(silinecekID)};
+        if (silinecekID == TUM_KATEGORILER) {
+            selection = null;
+            args = null;
+        }
+
+        int id = getContentResolver().delete(KategoriEntry.CONTENT_URI, selection, args);
+        Toast.makeText(this, "Kayıt Silindi:" + id, Toast.LENGTH_LONG).show();
+
+    }
+
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+
+        if (id == 100) {
+
+            String selection=NotlarEntry.COLUMN_KATEGORI_ID+"=?";
+            String[] selectionArg={String.valueOf(secilenKategoriID)};
+
+
+            String[] projection = {NotlarEntry.TABLE_NAME + "." + NotlarEntry._ID,
+                    NotlarEntry.COLUMN_NOT_ICERIK, NotlarEntry.COLUMN_OLUSTURULMA_TARIHI,
+                    NotlarEntry.COLUMN_BITIS_TARIHI, NotlarEntry.COLUMN_YAPILDI,
+                    NotlarEntry.COLUMN_KATEGORI_ID, KategoriEntry.COLUMN_KATEGORI};
+            return new CursorLoader(this, NotlarEntry.CONTENT_URI, projection, selection, selectionArg, NotlarEntry._ID+" DESC");
+        }
+
+        if(id==150){
+
+            String[] projection={KategoriEntry._ID, KategoriEntry.COLUMN_KATEGORI};
+            return new CursorLoader(this, KategoriEntry.CONTENT_URI, projection, null, null, KategoriEntry._ID+" DESC");
+
+        }
+
+        return null;
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        if (loader.getId() == 100) {
+            adapter.swapCursor(data);
+        }if(loader.getId()==150){
+            kategoriCursorAdapter.swapCursor(data);
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        adapter.swapCursor(null);
+        kategoriCursorAdapter.swapCursor(null);
+    }
 }
+

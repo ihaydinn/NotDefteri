@@ -21,6 +21,12 @@
             </intent-filter>
         </activity>
         <activity android:name=".KategoriActivity" />
+
+        <provider
+            android:authorities="com.ismailhakkiaydin.notdefteri.notdefterimprovider"
+            android:name=".data.NotDefterimProvider"
+            android:exported="false"></provider>
+
     </application>
 
 </manifest>

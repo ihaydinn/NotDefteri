@@ -2,22 +2,9 @@
     <string name="app_name">Not Defteri</string>
     <string name="action_settings">Ayarlar</string>
     <string name="kategoriler">Kategoriler</string>
-
-
-    <string-array name="kategoriler">
-
-        <item>Genel</item>
-        <item>Okul</item>
-        <item>Aile</item>
-        <item>İş</item>
-
-    </string-array>
-
-
-    <string-array name="notlar">
-        <item>Markete git</item>
-        <item>Okula git</item>
-        <item>İşe git</item>
-    </string-array>
+    <string name="tum_kategorileri_sil">Tüm Kategorileri Sil</string>
+    <string name="tum_notlari_sil">Tüm Notlari Sil</string>
+    <string name="test_notlar_olustur">Test Notlar Oluştur</string>
+    <string name="test_kategorileri_olustur">Test Kategorileri Olustur</string>
 
 </resources>

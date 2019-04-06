@@ -10,12 +10,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public static final String DATABASE_NAME="notdefterim.db";
     private static final int DATABASE_VERSION=2;
-    private static final String TABLE_KATEGORILER_CREATE =
+    private static final String TABLE_KATEGORILER_CREATE=
             "CREATE TABLE " + KategoriEntry.TABLE_NAME + " ("+
                     KategoriEntry._ID + " INTEGER PRIMARY KEY, "+
                     KategoriEntry.COLUMN_KATEGORI + " TEXT)";
 
-    private static final String TABLE_NOTLAR_CREATE =
+    private static final String TABLE_NOTLAR_CREATE=
             "CREATE TABLE " + NotlarEntry.TABLE_NAME + " ("+
                     NotlarEntry._ID + " INTEGER PRIMARY KEY, "+
                     NotlarEntry.COLUMN_NOT_ICERIK + " TEXT, " +
@@ -32,14 +32,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     @Override
-    public void onCreate(SQLiteDatabase sqLiteDatabase) {
-        sqLiteDatabase.execSQL(TABLE_KATEGORILER_CREATE);
-        sqLiteDatabase.execSQL(TABLE_NOTLAR_CREATE);
+    public void onCreate(SQLiteDatabase db) {
+
+        db.execSQL(TABLE_KATEGORILER_CREATE);
+        db.execSQL(TABLE_NOTLAR_CREATE);
 
     }
 
     @Override
-    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {
+    public void onConfigure(SQLiteDatabase db) {
+        db.setForeignKeyConstraintsEnabled(true);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+        db.execSQL("DROP TABLE IF EXISTS " + KategoriEntry.TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS "+ NotlarEntry.TABLE_NAME);
+        onCreate(db);
 
     }
 }
